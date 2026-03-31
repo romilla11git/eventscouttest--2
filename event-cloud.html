@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>EventScout Command Centre | Elite Intelligence Hub</title>
+  <!-- Google Fonts: Inter + Space Grotesk for headings accent -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      transition: background-color 0.35s cubic-bezier(0.2, 0, 0, 1), color 0.3s ease;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ========== LIGHT MODE (premium refined) ========== */
+    :root {
+      --bg-gradient-start: #F4F7FC;
+      --bg-gradient-end: #EEF2F8;
+      --bg-page: #F5F7FC;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-bg-solid: #FFFFFF;
+      --card-shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+      --card-shadow-hover: 0 24px 40px -16px rgba(0, 0, 0, 0.18), 0 4px 12px -4px rgba(0, 0, 0, 0.05);
+      --card-border: 1px solid rgba(0, 0, 0, 0.04);
+      --text-primary: #0A0C10;
+      --text-secondary: #3A404C;
+      --text-muted: #6C727F;
+      --accent-primary: #1E40AF;
+      --accent-secondary: #3B82F6;
+      --accent-glow: rgba(59, 130, 246, 0.15);
+      --tag-green-bg: #E9F9EF;
+      --tag-green-text: #0B5E2E;
+      --tag-yellow-bg: #FEF7E0;
+      --tag-yellow-text: #B45309;
+      --tag-red-bg: #FEF2F0;
+      --tag-red-text: #C2410C;
+      --benefit-bg: linear-gradient(135deg, #F0F7FF 0%, #E9F0FA 100%);
+      --benefit-border: rgba(59, 130, 246, 0.25);
+      --button-secondary-bg: #F1F4F9;
+      --button-secondary-text: #1F2937;
+      --icon-accent: #3B82F6;
+      --glass-edge: rgba(255, 255, 255, 0.6);
+      --card-backdrop: blur(0px);
+      --tag-glow: none;
+    }
+
+    /* ========== DARK MODE (deep space + premium) ========== */
+    body.dark {
+      --bg-gradient-start: #0A0F1A;
+      --bg-gradient-end: #0C1220;
+      --bg-page: #0B1120;
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --card-bg-solid: #1E293B;
+      --card-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(255, 255, 255, 0.05);
+      --card-shadow-hover: 0 28px 44px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(59, 130, 246, 0.2);
+      --card-border: 1px solid rgba(255, 255, 255, 0.05);
+      --text-primary: #F1F5F9;
+      --text-secondary: #CBD5E6;
+      --text-muted: #8192AA;
+      --accent-primary: #3B82F6;
+      --accent-secondary: #60A5FA;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --tag-green-bg: #0F2F1F;
+      --tag-green-text: #6FCF97;
+      --tag-yellow-bg: #3E2A1F;
+      --tag-yellow-text: #FBBF24;
+      --tag-red-bg: #3C1E1A;
+      --tag-red-text: #F97316;
+      --benefit-bg: linear-gradient(135deg, #0F212E 0%, #0A1A28 100%);
+      --benefit-border: rgba(59, 130, 246, 0.35);
+      --button-secondary-bg: #2D3A4E;
+      --button-secondary-text: #E2E8F0;
+      --icon-accent: #60A5FA;
+      --glass-edge: rgba(15, 23, 42, 0.7);
+      --card-backdrop: blur(12px);
+    }
+
+    body {
+      background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+    }
+
+    /* glassmorphic container */
+    .app-container {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 2rem 2rem 3rem;
+      position: relative;
+    }
+
+    /* header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 2.8rem;
+      gap: 1.2rem;
+    }
+    .title-section h1 {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(125deg, var(--text-primary) 20%, var(--accent-secondary) 90%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .title-section h1 i {
+      background: linear-gradient(145deg, var(--accent-primary), var(--accent-secondary));
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      font-size: 2rem;
+    }
+    .title-section p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      font-weight: 450;
+      letter-spacing: -0.2px;
+    }
+    .theme-toggle {
+      background: var(--card-bg-solid);
+      backdrop-filter: blur(8px);
+      border: var(--card-border);
+      border-radius: 60px;
+      padding: 0.6rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      cursor: pointer;
+      font-weight: 550;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      transition: all 0.25s ease;
+      box-shadow: var(--card-shadow);
+    }
+    .theme-toggle i {
+      font-size: 1.2rem;
+      color: var(--accent-secondary);
+      transition: transform 0.2s;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.02);
+      background: var(--button-secondary-bg);
+      border-color: var(--accent-secondary);
+    }
+
+    /* grid */
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 1.8rem;
+    }
+
+    /* premium elevated card with glassmorphism */
+    .event-card {
+      background: var(--card-bg);
+      backdrop-filter: var(--card-backdrop);
+      border-radius: 1.75rem;
+      padding: 1.6rem;
+      box-shadow: var(--card-shadow);
+      transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      border: var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .event-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent-secondary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .event-card:hover::before {
+      opacity: 0.6;
+    }
+    .event-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--card-shadow-hover);
+      background: var(--card-bg-solid);
+    }
+
+    /* header inside card */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .event-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+    }
+    .priority-pill {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.3rem 0.9rem;
+      border-radius: 40px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: var(--tag-green-bg);
+      color: var(--tag-green-text);
+      white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+    }
+    .priority-high {
+      background: var(--tag-red-bg);
+      color: var(--tag-red-text);
+      box-shadow: 0 0 8px rgba(249, 115, 22, 0.2);
+    }
+    .priority-medium {
+      background: var(--tag-yellow-bg);
+      color: var(--tag-yellow-text);
+    }
+    .event-description {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.48;
+      margin-top: 0.1rem;
+    }
+
+    /* meta row */
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--card-border);
+      padding-top: 0.75rem;
+      margin-top: 0.2rem;
+      align-items: center;
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-weight: 470;
+    }
+    .meta-item i {
+      width: 1rem;
+      font-size: 0.75rem;
+      color: var(--icon-accent);
+    }
+    .category-chip {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 500;
+      background: var(--button-secondary-bg);
+      color: var(--text-secondary);
+      padding: 0.2rem 0.75rem;
+      border-radius: 40px;
+      gap: 5px;
+    }
+
+    /* business benefit (premium callout) */
+    .benefit-block {
+      background: var(--benefit-bg);
+      border-left: 3px solid var(--accent-secondary);
+      padding: 0.8rem 1rem;
+      border-radius: 1rem;
+      margin: 0.2rem 0;
+      transition: all 0.2s;
+    }
+    .benefit-label {
+      font-weight: 700;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-secondary);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .benefit-text {
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* action row + micro animations */
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.25rem;
+      gap: 0.8rem;
+    }
+    .suggested-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent-secondary);
+      background: var(--accent-glow);
+      padding: 0.3rem 1rem;
+      border-radius: 40px;
+      backdrop-filter: blur(4px);
+    }
+    .action-button {
+      background: linear-gradient(105deg, var(--accent-primary), var(--accent-secondary));
+      border: none;
+      padding: 0.55rem 1.3rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      letter-spacing: 0.2px;
+    }
+    .action-button:hover {
+      transform: scale(0.97);
+      box-shadow: 0 8px 18px rgba(59, 130, 246, 0.3);
+      filter: brightness(1.05);
+    }
+
+    /* stats bar (extra premium touch) */
+    .insight-stats {
+      display: flex;
+      gap: 1.8rem;
+      background: var(--card-bg-solid);
+      backdrop-filter: blur(8px);
+      border-radius: 2rem;
+      padding: 0.8rem 1.8rem;
+      margin-bottom: 2.5rem;
+      border: var(--card-border);
+      width: fit-content;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .stat-number {
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: var(--accent-secondary);
+      font-family: 'Space Grotesk', monospace;
+    }
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--card-border);
+      padding-top: 1.8rem;
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 680px) {
+      .app-container {
+        padding: 1rem;
+      }
+      .events-grid {
+        grid-template-columns: 1fr;
+      }
+      .event-title {
+        font-size: 1.2rem;
+      }
+      .insight-stats {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    /* animated toast */
+    .premium-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card-bg-solid);
+      backdrop-filter: blur(20px);
+      color: var(--text-primary);
+      padding: 0.85rem 1.8rem;
+      border-radius: 60px;
+      font-weight: 550;
+      font-size: 0.85rem;
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.3);
+      border-left: 3px solid var(--accent-secondary);
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.25s ease;
+      pointer-events: none;
+      font-family: 'Inter', monospace;
+    }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <div class="header">
+    <div class="title-section">
+      <h1><i class="fas fa-chart-network"></i> EventScout · Command Centre</h1>
+      <p><i class="fas fa-microchip"></i> AI-driven intelligence · Strategic foresight for iWorth · Real-time signal prioritization</p>
+    </div>
+    <div class="theme-toggle" id="themeToggleBtn">
+      <i class="fas fa-sun" id="themeIcon"></i>
+      <span id="themeLabel">Light Mode</span>
+    </div>
+  </div>
+
+  <!-- KPI micro stats -->
+  <div class="insight-stats">
+    <div class="stat-item"><span class="stat-number" id="highCount">0</span> <span>🔥 High Impact</span></div>
+    <div class="stat-item"><span class="stat-number" id="mediumCount">0</span> <span>⚡ Growth Opps</span></div>
+    <div class="stat-item"><span class="stat-number" id="totalEvents">0</span> <span>📡 Total Signals</span></div>
+  </div>
+
+  <div class="events-grid" id="eventsGrid"></div>
+  <footer>
+    <span><i class="fas-regular fa-chart-line"></i> iWorth strategic alignment score</span>
+    <span><i class="fas fa-clock"></i> Live market pulse</span>
+    <span><i class="fas fa-shield"></i> AI-curated edge</span>
+  </footer>
+</div>
+
+<script>
+  // Enhanced event dataset with richer details
+  const eventsData = [
+    {
+      id: 1,
+      title: "Global AI Summit 2025",
+      description: "Keynote on generative AI in enterprise + exclusive networking with Fortune 500 CTOs. Emerging regulation panel and strategic M&A talks.",
+      date: "June 12–14, 2025",
+      location: "San Francisco, CA (Moscone Center)",
+      priority: "high",
+      category: "AI / Enterprise",
+      businessBenefit: "Direct access to 40+ enterprise decision-makers; position iWorth as thought leader in AI-driven event analytics. Projected ROI: 3.2x",
+      suggestedAction: "Request speaking slot & VIP pass"
+    },
+    {
+      id: 2,
+      title: "Sustainable Business Forum",
+      description: "ESG leadership summit with major investors and sustainability officers. Focus on green tech ROI, carbon credits, and reporting standards.",
+      date: "July 8, 2025",
+      location: "London, UK (ExCeL)",
+      priority: "medium",
+      category: "ESG / Investment",
+      businessBenefit: "iWorth can showcase carbon-footprint tracking modules — aligns with 78% of enterprise clients’ net-zero goals. Potential partnership with EcoVadis.",
+      suggestedAction: "Schedule booth and demo preview"
+    },
+    {
+      id: 3,
+      title: "FinTech Disrupt 2025",
+      description: "Top-tier financial innovation event. Regtech, blockchain adoption, embedded finance tracks, and open banking showcases.",
+      date: "September 3–5, 2025",
+      location: "New York, NY (Javits Center)",
+      priority: "high",
+      category: "FinTech",
+      businessBenefit: "Meet with 20+ banking CIOs; cross-sell EventScout’s real-time risk intelligence to financial vertical. Lead gen potential: $2.4M pipeline.",
+      suggestedAction: "Sponsor VIP lounge & host roundtable"
+    },
+    {
+      id: 4,
+      title: "Web3 Developer Conference",
+      description: "Decentralized identity and on-chain data infrastructure workshops. Highly technical audience, zero-knowledge proofs track.",
+      date: "October 20–22, 2025",
+      location: "Austin, TX",
+      priority: "low",
+      category: "Web3 / Blockchain",
+      businessBenefit: "Early adoption angle: iWorth can integrate wallet-based analytics for event provenance. Developer evangelism opportunity.",
+      suggestedAction: "Developer bounty program & side event"
+    },
+    {
+      id: 5,
+      title: "Retail Innovation Week",
+      description: "AI-powered personalization, smart supply chains, immersive commerce demos, and conversational commerce.",
+      date: "November 10–12, 2025",
+      location: "Miami, FL",
+      priority: "medium",
+      category: "Retail / E-com",
+      businessBenefit: "Connect with 15+ retail CMOs — demonstrate iWorth’s event attribution ROI model. Strategic pilot with 3 major retailers.",
+      suggestedAction: "Arrange 1:1 exec meetings"
+    },
+    {
+      id: 6,
+      title: "HealthTech Frontiers",
+      description: "FDA digital health updates, AI diagnostics, interoperability showcases, and wearable tech integration.",
+      date: "December 2–4, 2025",
+      location: "Boston, MA",
+      priority: "high",
+      category: "HealthTech",
+      businessBenefit: "Strategic expansion for iWorth into regulated verticals. Partnership opportunities with major health systems and VC health funds.",
+      suggestedAction: "Apply for innovation pitch competition"
+    },
+    {
+      id: 7,
+      title: "Edge Computing Expo",
+      description: "5G-enabled edge AI, IoT infrastructure, and real-time data processing at scale.",
+      date: "August 17–19, 2025",
+      location: "Austin, TX",
+      priority: "medium",
+      category: "Infrastructure",
+      businessBenefit: "iWorth's event stack can leverage edge analytics — showcase low-latency intelligence for industrial clients.",
+      suggestedAction: "Host technical workshop"
+    }
+  ];
+
+  function getPriorityClass(priority) {
+    if (priority === 'high') return 'priority-high';
+    if (priority === 'medium') return 'priority-medium';
+    return '';
+  }
+  function formatPriorityLabel(priority) {
+    if (priority === 'high') return '🔥 HIGH IMPACT';
+    if (priority === 'medium') return '⚡ STRATEGIC';
+    return '📘 EXPLORATORY';
+  }
+  function escapeHtml(str) { 
+    if(!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if(m === '&') return '&amp;';
+      if(m === '<') return '&lt;';
+      if(m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  function renderEventCard(event) {
+    const priorityClass = getPriorityClass(event.priority);
+    const priorityLabel = formatPriorityLabel(event.priority);
+    return `
+      <div class="event-card" data-id="${event.id}">
+        <div class="card-header">
+          <div class="event-title">${escapeHtml(event.title)}</div>
+          <div class="priority-pill ${priorityClass}">${priorityLabel}</div>
+        </div>
+        <div class="event-description">${escapeHtml(event.description)}</div>
+        <div class="meta-row">
+          <div class="meta-item"><i class="far fa-calendar-alt"></i> ${escapeHtml(event.date)}</div>
+          <div class="meta-item"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(event.location)}</div>
+          <div class="category-chip"><i class="fas fa-folder-tree"></i> ${escapeHtml(event.category)}</div>
+        </div>
+        <div class="benefit-block">
+          <div class="benefit-label"><i class="fas fa-chart-line"></i> BUSINESS VALUE · iWORTH EDGE</div>
+          <div class="benefit-text">${escapeHtml(event.businessBenefit)}</div>
+        </div>
+        <div class="action-row">
+          <div class="suggested-badge"><i class="fas fa-bolt"></i> SUGGESTED MOVE</div>
+          <button class="action-button" data-action-id="${event.id}"><i class="fas fa-arrow-right"></i> ${escapeHtml(event.suggestedAction)}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  let toastTimeout;
+  function showPremiumToast(message) {
+    const existingToast = document.querySelector('.premium-toast');
+    if(existingToast) existingToast.remove();
+    const toast = document.createElement('div');
+    toast.className = 'premium-toast';
+    toast.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 8px; color: var(--accent-secondary);"></i> ${message}`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 2600);
+  }
+
+  function updateStats() {
+    const high = eventsData.filter(e => e.priority === 'high').length;
+    const medium = eventsData.filter(e => e.priority === 'medium').length;
+    document.getElementById('highCount').innerText = high;
+    document.getElementById('mediumCount').innerText = medium;
+    document.getElementById('totalEvents').innerText = eventsData.length;
+  }
+
+  function renderAllEvents() {
+    const grid = document.getElementById('eventsGrid');
+    if(!grid) return;
+    grid.innerHTML = eventsData.map(ev => renderEventCard(ev)).join('');
+    document.querySelectorAll('.action-button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const actionId = parseInt(btn.getAttribute('data-action-id'));
+        const eventItem = eventsData.find(ev => ev.id === actionId);
+        if(eventItem) {
+          showPremiumToast(`✓ Strategic move registered: "${eventItem.suggestedAction}" for ${eventItem.title} · iWorth action logged`);
+        } else {
+          showPremiumToast(`✓ Intelligence dispatched · team notified`);
+        }
+      });
+    });
+    updateStats();
+  }
+
+  // theme handling with advanced transition
+  function setTheme(theme) {
+    const body = document.body;
+    const icon = document.getElementById('themeIcon');
+    const labelSpan = document.getElementById('themeLabel');
+    if (theme === 'dark') {
+      body.classList.add('dark');
+      localStorage.setItem('eventScoutTheme', 'dark');
+      if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+      if (labelSpan) labelSpan.innerText = 'Dark Mode';
+    } else {
+      body.classList.remove('dark');
+      localStorage.setItem('eventScoutTheme', 'light');
+      if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+      if (labelSpan) labelSpan.innerText = 'Light Mode';
+    }
+  }
+  function toggleTheme() {
+    const isDark = document.body.classList.contains('dark');
+    setTheme(isDark ? 'light' : 'dark');
+    showPremiumToast(`Theme switched to ${isDark ? 'Light' : 'Dark'} Mode · eye comfort optimized`);
+  }
+  function initTheme() {
+    const saved = localStorage.getItem('eventScoutTheme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark') setTheme('dark');
+    else if (saved === 'light') setTheme('light');
+    else if (prefersDark) setTheme('dark');
+    else setTheme('light');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderAllEvents();
+    initTheme();
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    if(toggleBtn) toggleBtn.addEventListener('click', toggleTheme);
+  });
+</script>
+</body>
+</html>

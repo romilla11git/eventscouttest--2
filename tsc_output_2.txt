@@ -1,0 +1,1 @@
+services/geminiService.ts(2,48): error TS2307: Cannot find module '@google/generative-ai' or its corresponding type declarations.

@@ -1,0 +1,4 @@
+services/geminiService.ts(2,35): error TS2307: Cannot find module '@google/genai' or its corresponding type declarations.
+services/mockApiService.ts(36,3): error TS2741: Property 'name' is missing in type '{ id: string; email: string; role: UserRole.ADMIN; interests: string[]; savedEventIds: string[]; createdAt: string; }' but required in type 'User'.
+services/mockApiService.ts(44,3): error TS2741: Property 'name' is missing in type '{ id: string; email: string; role: UserRole.USER; interests: string[]; savedEventIds: undefined[]; createdAt: string; }' but required in type 'User'.
+services/mockApiService.ts(52,3): error TS2741: Property 'name' is missing in type '{ id: string; email: string; role: UserRole.USER; interests: string[]; savedEventIds: undefined[]; createdAt: string; }' but required in type 'User'.

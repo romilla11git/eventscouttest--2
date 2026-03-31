@@ -1,0 +1,24 @@
+
+> eventscout-ai-command-center@0.0.0 build
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 20.2s
+   Linting and checking validity of types ...
+   Collecting page data ...
+[Error: Cannot find module 'C:\Users\Shami\Downloads\eventscouttesst 2\node_modules\@prisma\client\runtime\library.js'] {
+  code: 'MODULE_NOT_FOUND',
+  path: 'C:\\Users\\Shami\\Downloads\\eventscouttesst 2\\node_modules\\@prisma\\client'
+}
+[Error: Cannot find module 'C:\Users\Shami\Downloads\eventscouttesst 2\node_modules\@prisma\client\runtime\library.js'] {
+  code: 'MODULE_NOT_FOUND',
+  path: 'C:\\Users\\Shami\\Downloads\\eventscouttesst 2\\node_modules\\@prisma\\client'
+}
+
+> Build error occurred
+[Error: Failed to collect page data for /api/events/process] {
+  type: 'Error'
+}

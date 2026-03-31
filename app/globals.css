@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== LIGHT MODE (premium refined) ========== */
+:root {
+  --bg-gradient-start: #F4F7FC;
+  --bg-gradient-end: #EEF2F8;
+  --bg-page: #F5F7FC;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-bg-solid: #FFFFFF;
+  --card-shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+  --card-shadow-hover: 0 24px 40px -16px rgba(0, 0, 0, 0.18), 0 4px 12px -4px rgba(0, 0, 0, 0.05);
+  --card-border: rgba(0, 0, 0, 0.04);
+  --text-primary: #0A0C10;
+  --text-secondary: #3A404C;
+  --text-muted: #6C727F;
+  --accent-primary: #1E40AF;
+  --accent-secondary: #3B82F6;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --tag-green-bg: #E9F9EF;
+  --tag-green-text: #0B5E2E;
+  --tag-yellow-bg: #FEF7E0;
+  --tag-yellow-text: #B45309;
+  --tag-red-bg: #FEF2F0;
+  --tag-red-text: #C2410C;
+  --benefit-bg: linear-gradient(135deg, #F0F7FF 0%, #E9F0FA 100%);
+  --benefit-border: rgba(59, 130, 246, 0.25);
+  --button-secondary-bg: #F1F4F9;
+  --button-secondary-text: #1F2937;
+  --icon-accent: #3B82F6;
+  --glass-edge: rgba(255, 255, 255, 0.6);
+  --card-backdrop: blur(0px);
+  --tag-glow: none;
+}
+
+/* ========== DARK MODE (deep space + premium) ========== */
+.dark {
+  --bg-gradient-start: #0A0F1A;
+  --bg-gradient-end: #0C1220;
+  --bg-page: #0B1120;
+  --card-bg: rgba(30, 41, 59, 0.85);
+  --card-bg-solid: #1E293B;
+  --card-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(255, 255, 255, 0.05);
+  --card-shadow-hover: 0 28px 44px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(59, 130, 246, 0.2);
+  --card-border: rgba(255, 255, 255, 0.05);
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E6;
+  --text-muted: #8192AA;
+  --accent-primary: #3B82F6;
+  --accent-secondary: #60A5FA;
+  --accent-glow: rgba(59, 130, 246, 0.25);
+  --tag-green-bg: #0F2F1F;
+  --tag-green-text: #6FCF97;
+  --tag-yellow-bg: #3E2A1F;
+  --tag-yellow-text: #FBBF24;
+  --tag-red-bg: #3C1E1A;
+  --tag-red-text: #F97316;
+  --benefit-bg: linear-gradient(135deg, #0F212E 0%, #0A1A28 100%);
+  --benefit-border: rgba(59, 130, 246, 0.35);
+  --button-secondary-bg: #2D3A4E;
+  --button-secondary-text: #E2E8F0;
+  --icon-accent: #60A5FA;
+  --glass-edge: rgba(15, 23, 42, 0.7);
+  --card-backdrop: blur(12px);
+}
+
+@layer base {
+  body {
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+    color: var(--text-primary);
+    background-attachment: fixed;
+    @apply transition-colors duration-300 overflow-x-hidden;
+  }
+}
+
+@layer components {
+  /* ── Glassmorphism cards ─────────────────────────────────── */
+  .glass-card {
+    @apply bg-white/70 dark:bg-gray-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-2xl;
+  }
+
+  .glass-input {
+    @apply bg-gray-50/50 dark:bg-gray-950/50 backdrop-blur-md
+           border border-gray-200/50 dark:border-gray-800/50
+           focus:ring-2 focus:ring-[#30AABF]/40 transition-all;
+  }
+
+  /* ── iWorth brand gradient utilities ─────────────────────── */
+  .iw-gradient {
+    background: linear-gradient(135deg, var(--iw-from) 0%, var(--iw-to) 100%);
+  }
+
+  .iw-gradient-text {
+    @apply text-transparent bg-clip-text;
+    background-image: linear-gradient(135deg, var(--iw-from) 0%, var(--iw-to) 100%);
+  }
+
+  /* Active sidebar nav item */
+  .iw-nav-active {
+    background: linear-gradient(135deg, var(--iw-from) 0%, var(--iw-to) 100%);
+    @apply text-white shadow-lg;
+  }
+
+  /* Surface card with brand border */
+  .iw-card {
+    @apply bg-white dark:bg-gray-900 rounded-3xl border transition-all duration-300;
+    border-color: var(--iw-border);
+    box-shadow: var(--iw-shadow);
+  }
+  .iw-card:hover {
+    box-shadow: var(--iw-shadow-hover);
+  }
+
+  /* Pill bubble (mirrors event-cloud.html style) */
+  .iw-bubble {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-semibold text-sm cursor-pointer
+           transition-all duration-300;
+    background: linear-gradient(135deg, var(--iw-from) 0%, var(--iw-to) 100%);
+    box-shadow: var(--iw-shadow);
+  }
+  .iw-bubble:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: var(--iw-shadow-hover);
+  }
+
+  /* Primary CTA button */
+  .iw-btn-primary {
+    background: linear-gradient(135deg, var(--iw-from) 0%, var(--iw-to) 100%);
+    @apply text-white font-black text-xs uppercase tracking-widest rounded-2xl
+           hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center
+           disabled:opacity-50;
+    box-shadow: 0 20px 40px rgba(48, 170, 191, 0.28);
+  }
+
+  /* Legacy neon-text kept as alias to iw-gradient-text */
+  .neon-text {
+    @apply iw-gradient-text;
+  }
+}
+
+/* ─── Custom scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #30AABF, #00C2FF);
+  @apply rounded-full;
+}
+::-webkit-scrollbar-thumb:hover { opacity: 0.8; }

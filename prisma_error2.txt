@@ -1,0 +1,10 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma config detected, skipping environment variable loading.
+Prisma schema loaded from prisma\schema.prisma
+Error: 
+Cannot find module 'C:\Users\Shami\Downloads\eventscouttesst 2\node_modules\@prisma\client\runtime\query_engine_bg.postgresql.wasm-base64.js'
+Require stack:
+- C:\Users\Shami\Downloads\eventscouttesst 2\node_modules\prisma\build\index.js
+
+

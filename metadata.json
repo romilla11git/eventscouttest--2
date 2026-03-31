@@ -1,0 +1,9 @@
+
+{
+  "name": "EventScout AI Command Center",
+  "description": "An internal organizational system for AI-powered event discovery, review, and distribution with role-based access control and real-time processing.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

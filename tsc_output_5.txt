@@ -1,0 +1,10 @@
+components/AppContainer.tsx(4,53): error TS2307: Cannot find module './types' or its corresponding type declarations.
+components/AppContainer.tsx(63,25): error TS2322: Type '{ events: Event[]; user: any; onExplore: () => void; onRefresh: () => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & DashboardProps'.
+  Property 'onRefresh' does not exist on type 'IntrinsicAttributes & DashboardProps'.
+components/AppContainer.tsx(72,25): error TS2322: Type '{ user: any; onUpdate: (u: User) => void; onReset: () => void; addNotification: (message: string, type?: Notification) => void; }' is not assignable to type 'IntrinsicAttributes & UserProfileProps'.
+  Property 'addNotification' does not exist on type 'IntrinsicAttributes & UserProfileProps'.
+components/AppContainer.tsx(78,25): error TS2322: Type '{ savedEvents: Event[]; onSync: () => void; onToggleSave: () => void; }' is not assignable to type 'IntrinsicAttributes & CalendarViewProps'.
+  Property 'savedEvents' does not exist on type 'IntrinsicAttributes & CalendarViewProps'.
+components/AppContainer.tsx(113,14): error TS2739: Type '{ children: Element; user: any; activeTab: string; setActiveTab: Dispatch<SetStateAction<string>>; onLogout: () => void; isDarkMode: boolean; onToggleTheme: () => void; }' is missing the following properties from type 'LayoutProps': onRoleToggle, notifications
+components/AppContainer.tsx(128,25): error TS2322: Type '{ key: any; notification: Notification; onDismiss: () => void; }' is not assignable to type 'IntrinsicAttributes & ToastProps'.
+  Property 'notification' does not exist on type 'IntrinsicAttributes & ToastProps'. Did you mean 'notifications'?

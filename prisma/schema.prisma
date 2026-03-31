@@ -1,0 +1,147 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum EventState {
+  DISCOVERED
+  REVIEWED
+  SCHEDULED
+  CONTACTED
+  PROPOSAL_SENT
+  COMPLETED
+  ARCHIVED
+}
+
+enum RejectionReason {
+  MISSING_TITLE
+  MISSING_DATE
+  MISSING_LOCATION
+  INVALID_DATE
+  PAST_EVENT
+  BLOCKED_KEYWORD
+  NOT_RELEVANT_TO_IWORTH
+  DUPLICATE_EVENT
+  HTTP_ERROR
+  SCRAPER_FAILURE
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password       String
+  name           String
+  phone          String?
+  organization   String?
+  role           Role      @default(user)
+  isActive       Boolean   @default(true)
+  isVisible      Boolean   @default(true)
+  interests      String[]  @default([])
+  savedEventIds  String[]  @default([])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  managedEvents  Event[]   @relation("Manager")
+  createdEvents  Event[]   @relation("Creator")
+}
+
+model Event {
+  id                    String      @id @default(cuid())
+  title                 String
+  description           String
+  date                  DateTime
+  // Optional end date for multi-day events
+  endDate               DateTime?
+  location              String
+  locationCity          String?
+  category              String?
+  whyItMattersForIworth String?
+  iworthVertical        String?
+  marketingStrategy     Json?
+
+  contactsCollected     Int         @default(0)
+  demosGiven            Int         @default(0)
+  salesClosed           Int         @default(0)
+  partnershipsStarted   Int         @default(0)
+  competitorsDetected   String[]    @default([])
+
+  organizer             String?
+  opportunityType       String?
+  sourceUrl             String?
+  suggestedAction       String?
+  actionTaken           Boolean     @default(false)
+  proposalSent          Boolean     @default(false)
+  proposalAccepted      Boolean     @default(false)
+  dealWon               Boolean     @default(false)
+  estimatedValue        Float?
+  outcomeNotes          String?
+
+  state                 EventState  @default(DISCOVERED)
+  priorityScore         Int         @default(5)
+  confidenceScore       Int         @default(0)
+  tags                  String[]
+  conflictStatus        Boolean     @default(false)
+  // Relevance score 0-100 for iWorth alignment
+  relevanceScore        Int         @default(0)
+  
+  contactsPotential     Int?
+  partnershipPotential  String?
+  riskLevel             String?
+  competitionPresence   String?
+  actionPlan            Json?
+
+  geolocation           Json?       // { lat: number, lon: number }
+  imageUrl              String?
+  rawSource             String?
+  
+  createdById           String
+  createdBy             User        @relation("Creator", fields: [createdById], references: [id])
+  
+  publishedById         String?
+  publishedBy           User?       @relation("Manager", fields: [publishedById], references: [id])
+  publishedAt           DateTime?
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@unique([title, date])
+}
+
+model RejectedEvent {
+  id             String          @id @default(cuid())
+  url            String
+  titleExtracted String?
+  reason         RejectionReason
+  extractedJson  Json?
+  sourceSite     String?
+  createdAt      DateTime        @default(now())
+}
+
+model ScraperLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  status       String
+  message      String
+  eventsFound  Int      @default(0)
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  action       String   // CREATE | SKIP | REJECT | DELETE | UPDATE
+  entityType   String   @default("Event")
+  entityId     String?
+  entityTitle  String
+  reason       String?
+  performedBy  String   @default("SYSTEM")
+}
