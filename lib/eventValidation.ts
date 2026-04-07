@@ -69,6 +69,7 @@ export interface NormalizedEvent {
     rawSource?: string | null;
     geolocation?: { lat: number; lon: number } | null;
     imageUrl?: string | null;
+    type?: string | null;
 }
 
 // ─── Relevance Scoring ─────────────────────────────────────────────────────────
@@ -87,6 +88,18 @@ const IWORTH_SIGNALS: Array<{ kw: string; weight: number }> = [
     { kw: 'ai innovation', weight: 15 },
     { kw: 'technology expo', weight: 15 },
     { kw: 'startup conference', weight: 15 },
+    { kw: 'venue AV', weight: 20 },
+    { kw: 'smart classroom integration', weight: 18 },
+    { kw: 'edge compute', weight: 15 },
+    { kw: 'managed WiFi', weight: 15 },
+    { kw: 'digital signage', weight: 15 },
+    { kw: 'ICT training', weight: 20 },
+    { kw: 'corporate training', weight: 18 },
+    { kw: 'staff cloud upskill', weight: 15 },
+    { kw: 'call for papers', weight: 10 },
+    { kw: 'call for vendors', weight: 10 },
+    { kw: 'exhibitor registration', weight: 10 },
+    { kw: 'sponsorship', weight: 10 },
     // Broader ICT/tech signals so general tech conferences aren't excluded
     { kw: 'ict', weight: 15 },
     { kw: 'technology', weight: 10 },
@@ -177,14 +190,16 @@ export function hasBlockedCommercialTerms(description: string): boolean {
 // Score <5 = reject (untrustworthy or no source)
 
 const TICKETING_DOMAINS = ['eventbrite.com', 'meetup.com'];
-const OFFICIAL_DOMAINS = ['.go.ke', '.ac.ke', 'konza.go.ke', 'strathmore.edu', 'ict.go.ke', 'tenders.go.ke'];
+const OFFICIAL_DOMAINS = ['.go.ke', '.ac.ke', 'konza.go.ke', 'strathmore.edu', 'ict.go.ke', 'tenders.go.ke', 'eventpack.co.ke', 'sfawards.co.ke'];
+const TRUSTED_CORPORATE = ['iworth.co.ke', '.co.ke'];
 
 export function computeConfidenceScore(sourceUrl: string): number {
     try {
         const host = new URL(sourceUrl).hostname.toLowerCase();
         if (TICKETING_DOMAINS.some(d => host.includes(d))) return 10;
         if (OFFICIAL_DOMAINS.some(d => host.includes(d))) return 8;
-        if (host.endsWith('.org') || host.endsWith('.com')) return 6;
+        if (host.endsWith('.org') || TRUSTED_CORPORATE.some(d => host.includes(d))) return 6;
+        if (host.endsWith('.com') || host.endsWith('.edu')) return 5;
         return 4;
     } catch {
         return 0;
@@ -196,6 +211,11 @@ export function computeConfidenceScore(sourceUrl: string): number {
 export function isFutureDate(date: string | Date): boolean {
     const eventDate = new Date(date);
     return !isNaN(eventDate.getTime()) && eventDate > new Date();
+}
+
+export function isHistoricalEvent(date: string | Date): boolean {
+    const eventDate = new Date(date);
+    return !isNaN(eventDate.getTime()) && eventDate < new Date();
 }
 
 // ─── Rule 4: Normalize Date ──────────────────────────────────────────────────
@@ -346,6 +366,73 @@ export function isIworthAligned(title: string, description: string): boolean {
     return IWORTH_KEYWORDS.some(kw => text.includes(kw));
 }
 
+export function determineIworthAlignment(title: string, description: string): { iworthVertical: string; whyItMattersForIworth: string } {
+    const text = (title + ' ' + description).toLowerCase();
+
+    const mapping: Array<{ keywords: string[]; vertical: string; reason: string }> = [
+        {
+            keywords: ['edtech', 'education', 'elearning', 'digital learning', 'smart classroom', 'bootcamp'],
+            vertical: 'EdTech',
+            reason: 'Drives iWorth value by identifying educational technology and learning delivery opportunities for product demos and institutional partnerships.',
+        },
+        {
+            keywords: ['cloud', 'cloud computing', 'infrastructure', 'data center'],
+            vertical: 'Cloud & Infrastructure',
+            reason: 'Targets enterprise cloud stack deals and managed services engagements for iWorth infrastructure offerings.',
+        },
+        {
+            keywords: ['cybersecurity', 'security', 'networking', 'enterprise networking'],
+            vertical: 'Cybersecurity & Networking',
+            reason: 'Highlights security and networking events where iWorth can position cyber defense solutions and connectivity projects.',
+        },
+        {
+            keywords: ['ai', 'artificial intelligence', 'machine learning', 'robotics', 'automation'],
+            vertical: 'AI & Automation',
+            reason: 'Aligns with iWorth’s AI/automation portfolio and identifies high-leverage innovation demos and pilot opportunities.',
+        },
+        {
+            keywords: ['startup', 'innovation', 'conference', 'summit', 'expo', 'forum'],
+            vertical: 'Innovation & Partnerships',
+            reason: 'Useful for iWorth business development, channel partnerships and corporate innovation deal flow.',
+        },
+    ];
+
+    for (const entry of mapping) {
+        if (entry.keywords.some(kw => text.includes(kw))) {
+            return { iworthVertical: entry.vertical, whyItMattersForIworth: entry.reason };
+        }
+    }
+
+    return {
+        iworthVertical: 'General Tech',
+        whyItMattersForIworth: 'Potential technology event that may have business development value for iWorth customers and demo/sales engagement.',
+    };
+}
+
+export function determineOpportunityType(title: string, description: string): string {
+    const text = (title + ' ' + description).toLowerCase();
+
+    if (text.includes('demo') || text.includes('exhibition') || text.includes('expo')) return 'Product Demo';
+    if (text.includes('training') || text.includes('workshop') || text.includes('bootcamp')) return 'Training Contract';
+    if (text.includes('partnership') || text.includes('channel') || text.includes('vendor')) return 'Channel Partner';
+    if (text.includes('managed') || text.includes('service') || text.includes('consulting')) return 'Managed Service';
+    if (text.includes('bid') || text.includes('tender') || text.includes('procurement')) return 'Enterprise Bid';
+
+    return 'Events';
+}
+
+export function determineEventType(title: string, description: string): string {
+    const text = (title + ' ' + description).toLowerCase();
+
+    if (text.includes('hackathon') || text.includes('competition')) return 'hackathon';
+    if (text.includes('seminar') || text.includes('talk')) return 'seminar';
+    if (text.includes('workshop') || text.includes('training')) return 'workshop';
+    if (text.includes('expo') || text.includes('exhibition')) return 'expo';
+    if (text.includes('conference') || text.includes('summit')) return 'conference';
+
+    return 'event';
+}
+
 // ─── Rejection Logging Helper ──────────────────────────────────────────────────
 
 async function logRejection(params: {
@@ -469,6 +556,11 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
         return { valid: false, rejectionCode: 'NOT_RELEVANT_TO_IWORTH', reason: 'Low relevance to iWorth' };
     }
 
+    // Determine vertical and opportunity type
+    const { iworthVertical, whyItMattersForIworth } = determineIworthAlignment(event.title!, description);
+    const opportunityType = determineOpportunityType(event.title!, description);
+    const type = determineEventType(event.title!, description);
+
     return {
         valid: true,
         normalized: {
@@ -481,9 +573,9 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
             organizer: event.organizer?.trim() ?? null,
             sourceUrl: url.trim(),
             suggestedAction: event.suggestedAction?.trim() ?? null,
-            opportunityType: event.opportunityType?.trim() ?? null,
-            iworthVertical: event.iworthVertical?.trim() ?? null,
-            whyItMattersForIworth: event.whyItMattersForIworth?.trim() ?? null,
+            opportunityType: opportunityType,
+            iworthVertical: iworthVertical,
+            whyItMattersForIworth: whyItMattersForIworth,
             priorityScore,
             confidenceScore: confidence,
             tags,
@@ -493,6 +585,7 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
             geolocation: event.geolocation ?? null,
             imageUrl: event.imageUrl ?? null,
             relevanceScore,
+            type,
         },
     };
 }

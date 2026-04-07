@@ -4,7 +4,7 @@ import FirecrawlApp from '@mendable/firecrawl-js';
 import Groq from "groq-sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from '@/lib/prisma';
-import { validateAndSaveEvent, RawEventInput } from '@/lib/eventValidation';
+import { validateAndSaveEvent, RawEventInput, scoreRelevance, determineIworthAlignment, determineOpportunityType } from '@/lib/eventValidation';
 
 const exa = new Exa(process.env.EXA_API_KEY);
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY as string });
@@ -17,8 +17,10 @@ const CREDIBLE_DOMAINS = [
   'meetup.com',
   'gitexafrica.com',
   'gitexglobal.com',
+  'iworth.co.ke',
   '.ac.ke',
   '.go.ke',
+  '.co.ke',
   '.edu',
   '.org',
   '.com',
@@ -28,6 +30,21 @@ function isCredibleUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
     return CREDIBLE_DOMAINS.some(d => host.includes(d));
+  } catch {
+    return false;
+  }
+}
+
+function isKenyanEvent(location: string | undefined, sourceUrl: string): boolean {
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase();
+    const loc = (location || '').toLowerCase();
+
+    const kenyaSignals = ['kenya', 'nairobi', 'mombasa', 'kisumu', 'nakuru', 'eldoret', 'thika', 'kisii'];
+    const hasKenyaLocation = kenyaSignals.some(sig => loc.includes(sig));
+    const isKeSource = host.endsWith('.ke') || host.includes('.co.ke');
+
+    return isKeSource || hasKenyaLocation;
   } catch {
     return false;
   }
@@ -169,11 +186,12 @@ export async function POST(req: Request) {
       '("smart classroom" OR "interactive display" OR "AV technology") Kenya expo 2026',
       '("innovation summit" OR "startup conference" OR "digital transformation") Nairobi 2026',
       '("cybersecurity" OR "cloud computing" OR "enterprise networking") Kenya conference 2026',
-      '("education technology" OR "e-learning" OR "digital learning") Africa summit 2026',
+      '("education technology" OR "e-learning" OR "digital learning") Kenya 2026',
+      '("iworth" OR "iworth technology" OR "iworth tech" OR "edtech") Kenya 2026',
       '("robotics" OR "STEM" OR "coding bootcamp") Kenya 2026',
       '("fintech" OR "business technology" OR "corporate ICT") Nairobi 2026 event',
       '("government ICT" OR "digital government" OR "smart city") Kenya 2026',
-      '("renewable energy" OR "solar technology" OR "clean tech") Kenya conference 2026',
+      '("kenya" OR "nairobi") iworth tech event',
     ];
 
     const query = body.query || QUERY_BANK[Math.floor(Math.random() * QUERY_BANK.length)];
@@ -265,6 +283,12 @@ export async function POST(req: Request) {
             continue;
           }
 
+          // Require date and location for legitimacy
+          if (!parsed.date || !parsed.location) {
+            errors.push({ url, reason: `Event "${parsed.title}" missing date or location` });
+            continue;
+          }
+
           const rawDate = parsed.date ?? undefined;
           // Fix year-only fallback dates that are now in the past (e.g. 2026-01-01)
           let resolvedDate: string | undefined = rawDate;
@@ -293,6 +317,26 @@ export async function POST(req: Request) {
             tags: [],
             rawSource: new URL(url).hostname,
           };
+
+          // enforces Kenya focus
+          if (!isKenyanEvent(candidate.location, candidate.sourceUrl || url)) {
+            console.log('[EventScout Pipeline] REJECTED: not Kenya-focused', candidate.title, candidate.location, candidate.sourceUrl);
+            errors.push({ url, reason: 'Not a Kenya event / source' });
+            continue;
+          }
+
+          const relevance = scoreRelevance(candidate.title, candidate.description ?? '', candidate.category);
+          if (relevance < 45) {
+            console.log('[EventScout Pipeline] REJECTED: low iWorth relevance', candidate.title, relevance);
+            errors.push({ url, reason: `Low iWorth relevance (${relevance})` });
+            continue;
+          }
+
+          // Attach vertical + business-alignment narrative for iWorth tech
+          const { iworthVertical, whyItMattersForIworth } = determineIworthAlignment(candidate.title, candidate.description ?? '');
+          candidate.iworthVertical = iworthVertical;
+          candidate.whyItMattersForIworth = whyItMattersForIworth;
+          candidate.opportunityType = determineOpportunityType(candidate.title, candidate.description ?? '');
 
           const outcome = await validateAndSaveEvent(candidate, systemUser.id, parsed);
 
