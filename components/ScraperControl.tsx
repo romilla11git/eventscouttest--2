@@ -148,29 +148,52 @@ const ScraperControl: React.FC<ScraperControlProps> = ({ onNewEvents, addNotific
           <div className="max-h-[700px] overflow-y-auto scrollbar-hide">
             {logs.length > 0 ? (
               logs.map((log) => (
-                <div key={log.id} className="p-8 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/20 transition-all group relative">
-                  <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => handleDeleteLog(log.id, e)}
-                      className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                      title="Delete log"
-                    >
-                      <i className="fas fa-times text-xs"></i>
-                    </button>
-                  </div>
-                  <div className="flex items-start justify-between mb-3">
-                    <span className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-widest ${log.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-500' : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-500'}`}>
-                      {log.status}
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                  </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 font-bold tracking-tight mb-3">{log.message}</p>
-                  {log.eventsFound > 0 && (
-                    <div className="inline-flex items-center space-x-2 text-[10px] text-cyan-600 dark:text-cyan-500 font-black uppercase tracking-widest">
-                      <i className="fas fa-plus-circle"></i>
-                      <span>{log.eventsFound} draft(s) created</span>
+                <div key={log.id} className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/20 transition-all">
+                  <div className="flex items-start gap-4">
+                    {/* Status dot */}
+                    <div className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${log.status === 'success' ? 'bg-emerald-500' : log.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'}`} />
+
+                    <div className="flex-1 min-w-0">
+                      {/* Top row: badge + timestamp + delete */}
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block px-2 py-0.5 text-[9px] font-black rounded-md uppercase tracking-widest ${
+                            log.status === 'success'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                              : log.status === 'warning'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+                              : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+                          }`}>
+                            {log.status}
+                          </span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                            {new Date(log.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                            {' · '}
+                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {/* DELETE — always visible, red trash icon */}
+                        <button
+                          onClick={(e) => handleDeleteLog(log.id, e)}
+                          title="Delete this log entry"
+                          className="flex-shrink-0 w-7 h-7 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 transition-all border border-red-100 dark:border-red-500/20 flex items-center justify-center"
+                        >
+                          <i className="fas fa-trash text-[10px]"></i>
+                        </button>
+                      </div>
+
+                      {/* Message */}
+                      <p className="text-sm text-gray-700 dark:text-gray-200 font-medium leading-relaxed">{log.message}</p>
+
+                      {/* Events found badge */}
+                      {log.eventsFound > 0 && (
+                        <div className="inline-flex items-center gap-1.5 mt-2 text-[10px] text-cyan-700 dark:text-cyan-400 font-black uppercase tracking-widest bg-cyan-50 dark:bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-100 dark:border-cyan-500/20">
+                          <i className="fas fa-plus-circle text-[9px]"></i>
+                          <span>{log.eventsFound} event(s) queued</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))
             ) : (

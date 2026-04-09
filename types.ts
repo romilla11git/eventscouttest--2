@@ -97,7 +97,7 @@ export interface Notification {
 export interface ScraperLog {
   id: string;
   timestamp: string;
-  status: 'success' | 'error';
+  status: 'success' | 'warning' | 'error';
   message: string;
   eventsFound: number;
 }

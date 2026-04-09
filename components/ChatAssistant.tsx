@@ -13,6 +13,85 @@ interface ChatAssistantProps {
     user: User;
 }
 
+/**
+ * SafeMarkdown — zero XSS risk markdown renderer.
+ * Converts **bold**, `code`, headings, and bullet lines
+ * into typed React elements. No dangerouslySetInnerHTML used.
+ */
+function SafeMarkdown({ text }: { text: string }) {
+    const lines = text.split('\n');
+
+    return (
+        <div className="space-y-1">
+            {lines.map((line, i) => {
+                // Heading (## or #)
+                if (line.startsWith('## ')) {
+                    return <p key={i} className="font-black text-sm mt-2">{renderInline(line.slice(3))}</p>;
+                }
+                if (line.startsWith('# ')) {
+                    return <p key={i} className="font-black text-base mt-2">{renderInline(line.slice(2))}</p>;
+                }
+                // Bullet lines
+                if (line.startsWith('- ') || line.startsWith('* ')) {
+                    return (
+                        <div key={i} className="flex gap-2 text-sm">
+                            <span className="mt-1 shrink-0 w-1.5 h-1.5 rounded-full bg-current opacity-60 mt-[6px]" />
+                            <span>{renderInline(line.slice(2))}</span>
+                        </div>
+                    );
+                }
+                // Numbered list
+                const numMatch = line.match(/^(\d+)\.\s(.+)/);
+                if (numMatch) {
+                    return (
+                        <div key={i} className="flex gap-2 text-sm">
+                            <span className="shrink-0 font-bold opacity-60">{numMatch[1]}.</span>
+                            <span>{renderInline(numMatch[2])}</span>
+                        </div>
+                    );
+                }
+                // Empty line
+                if (!line.trim()) return <div key={i} className="h-1" />;
+                // Default paragraph
+                return <p key={i} className="text-sm leading-relaxed">{renderInline(line)}</p>;
+            })}
+        </div>
+    );
+}
+
+/** Renders inline bold (**text**) and inline code (`code`) safely. */
+function renderInline(text: string): React.ReactNode[] {
+    const parts: React.ReactNode[] = [];
+    // Split on **bold** and `code` tokens
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+        }
+        const token = match[0];
+        if (token.startsWith('**')) {
+            parts.push(<strong key={key++}>{token.slice(2, -2)}</strong>);
+        } else if (token.startsWith('`')) {
+            parts.push(
+                <code key={key++} className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-xs font-mono">
+                    {token.slice(1, -1)}
+                </code>
+            );
+        }
+        lastIndex = match.index + token.length;
+    }
+
+    if (lastIndex < text.length) {
+        parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+    }
+
+    return parts;
+}
+
 const ChatAssistant: React.FC<ChatAssistantProps> = ({ user }) => {
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: `Greetings ${user.name}. I am the iWorth Intelligence Network Assistant. I am monitoring the Nairobi tech sector database. How can I assist your operations today?` }
@@ -85,8 +164,8 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ user }) => {
                                     <span className="text-[9px] font-black uppercase tracking-widest">System Response</span>
                                 </div>
                             )}
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-sm font-medium leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}>
+                            <div className="font-medium leading-relaxed">
+                                <SafeMarkdown text={msg.content} />
                             </div>
                         </div>
                     </div>

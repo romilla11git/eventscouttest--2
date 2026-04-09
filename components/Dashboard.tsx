@@ -13,15 +13,21 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ events, user, onToggleSave, onExplore, onRefresh }) => {
-  const rankedEvents = [...events]
-    .filter(e => e.state === EventState.REVIEWED)
-    .sort((a, b) => {
+  // Show REVIEWED events ranked by relevance. Fall back to DISCOVERED if none published yet.
+  const reviewedEvents = events.filter(e => e.state === EventState.REVIEWED);
+  const discoveredEvents = events.filter(e => e.state === EventState.DISCOVERED);
+  const hasPendingOnly = reviewedEvents.length === 0 && discoveredEvents.length > 0;
+
+  const rankEvents = (pool: Event[]) =>
+    [...pool].sort((a, b) => {
       const aMatches = a.tags.filter(t => user?.interests.includes(t)).length;
       const bMatches = b.tags.filter(t => user?.interests.includes(t)).length;
       const aScore = a.priorityScore + (aMatches * 2);
       const bScore = b.priorityScore + (bMatches * 2);
       return bScore - aScore;
     });
+
+  const rankedEvents = rankEvents(reviewedEvents.length > 0 ? reviewedEvents : discoveredEvents);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -56,6 +62,17 @@ const Dashboard: React.FC<DashboardProps> = ({ events, user, onToggleSave, onExp
           </div>
         </div>
       </div>
+
+      {/* Pending review notice — shown when admin hasn't published yet */}
+      {hasPendingOnly && (
+        <div className="flex items-start gap-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 text-amber-800 dark:text-amber-300">
+          <i className="fas fa-clock text-amber-500 mt-0.5 shrink-0"></i>
+          <div>
+            <p className="text-sm font-bold">Intelligence Awaiting Review</p>
+            <p className="text-xs opacity-80 mt-0.5">{discoveredEvents.length} event{discoveredEvents.length !== 1 ? 's' : ''} discovered. An admin needs to publish them from the <strong>Intelligence Feed</strong> tab before they appear as verified signals. Showing discovered events below.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {rankedEvents.length > 0 ? (

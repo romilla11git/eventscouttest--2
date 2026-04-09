@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { validateAndSaveBatch } from '@/lib/eventValidation';
+import { requireRole } from '@/lib/requireRole';
 
 // ─── Server-side Gemini helper ────────────────────────────────────────────────
 async function fetchAntigravityEventsServer() {
@@ -173,20 +174,33 @@ export async function runScraperAction() {
 
     // ── Step 2: Normalize raw API shape → RawEventInput ──────────────────────
     const normalized = rawEvents.map((e: any) => {
-        // ── Data Sanitizer: coerce types, apply safe defaults ─────────────────
+        // ── Hard date validation: reject unparseable or past dates outright ────
         const rawDate = e.date_time || e.date || '';
         const parsedDate = new Date(rawDate);
-        let safeDate = isNaN(parsedDate.getTime()) ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : parsedDate; // default 30 days out if unparseable
 
-        if (safeDate < new Date()) {
-            safeDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-            console.log(`[Admin Scraper] Date is past — bumped to 90 days from now`);
+        if (isNaN(parsedDate.getTime())) {
+            console.log(`[Admin Scraper] SKIP: unparseable date "${rawDate}" for "${e.event_name || e.title}"`)
+            return null; // hard reject — no fake date bumping
         }
+
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        if (parsedDate < todayMidnight) {
+            console.log(`[Admin Scraper] SKIP: past date "${rawDate}" for "${e.event_name || e.title}"`);
+            return null; // hard reject past events
+        }
+
+        // ── Revenue & partnership intelligence fields ──────────────────────
+        const estimatedValue = e.estimatedValue ?? e.estimated_value ?? null;
+        const contactsPotential = e.contactsPotential ?? e.contacts_potential ?? null;
+        const partnershipPotential = e.partnershipPotential ?? e.partnership_potential ?? null;
+        const riskLevel = e.riskLevel ?? e.risk_level ?? null;
+        const competitionPresence = e.competitionPresence ?? e.competition_presence ?? null;
 
         return {
             title: String(e.event_name || e.title || '').trim(),
             description: String(e.event_description || e.description || '').trim(),
-            date: safeDate.toISOString(),
+            date: parsedDate.toISOString(),
             location: String(e.venue || e.location || '').trim(),
             locationCity: e.location_city || null,
             category: e.event_category || null,
@@ -204,8 +218,14 @@ export async function runScraperAction() {
                 ? e.marketing_strategy
                 : { marketing_steps: [], recommended_materials: [], engagement_idea: '', expected_outcome: '' },
             rawSource: isFallback ? 'iWorth Local Fallback DB' : 'EventScout Intelligence 3.0',
+            // ─ Revenue intelligence ─
+            ...(estimatedValue != null ? { estimatedValue: Number(estimatedValue) } : {}),
+            ...(contactsPotential != null ? { contactsPotential: Number(contactsPotential) } : {}),
+            ...(partnershipPotential ? { partnershipPotential: String(partnershipPotential) } : {}),
+            ...(riskLevel ? { riskLevel: String(riskLevel) } : {}),
+            ...(competitionPresence ? { competitionPresence: String(competitionPresence) } : {}),
         };
-    });
+    }).filter((e): e is NonNullable<typeof e> => e !== null);
 
     // ── Step 3: Run validation pipeline (URL, future date, dedup, save) ──────
     let admin = await prisma.user.findFirst({ where: { role: 'admin' } });

@@ -100,6 +100,20 @@ const IWORTH_SIGNALS: Array<{ kw: string; weight: number }> = [
     { kw: 'call for vendors', weight: 10 },
     { kw: 'exhibitor registration', weight: 10 },
     { kw: 'sponsorship', weight: 10 },
+    // ── Tender & procurement signals (HIGH VALUE for iWorth) ──────────────────
+    { kw: 'tender', weight: 25 },
+    { kw: 'procurement', weight: 25 },
+    { kw: 'request for proposal', weight: 25 },
+    { kw: 'rfp', weight: 20 },
+    { kw: 'bid', weight: 20 },
+    { kw: 'bidding', weight: 20 },
+    { kw: 'submit proposal', weight: 20 },
+    { kw: 'government tender', weight: 30 },
+    { kw: 'county tender', weight: 28 },
+    { kw: 'ministry tender', weight: 28 },
+    { kw: 'school tender', weight: 28 },
+    { kw: 'smart school', weight: 28 },
+    { kw: 'ict infrastructure', weight: 25 },
     // Broader ICT/tech signals so general tech conferences aren't excluded
     { kw: 'ict', weight: 15 },
     { kw: 'technology', weight: 10 },
@@ -160,27 +174,18 @@ const BANNED_SPECULATIVE_WORDS = [
     'predicted', 'tentative', 'tbc', '(tbc)',
 ];
 
-// ─── Rule 2.7: Blocked Commercial Terms (Tenders / Procurement etc.) ──────────
-// Used to exclude pure tender / RFP style listings from the event feed.
-
-const BLOCKED_COMMERCIAL_TERMS = [
-    'tender',
-    'procurement',
-    'request for proposal',
-    'rfp',
-    'bid ',
-    'bidding',
-    'submit proposal',
-];
+// NOTE: Tenders, procurement, and RFPs are HIGH-VALUE opportunities for iWorth
+// and are intentionally NOT blocked. They are instead routed to
+// opportunityType = 'Tender' and tagged #Tender with high relevance scores.
 
 export function hasBannedSpeculativeWords(title: string, description: string): boolean {
     const text = (title + ' ' + description).toLowerCase();
     return BANNED_SPECULATIVE_WORDS.some(w => text.includes(w));
 }
 
-export function hasBlockedCommercialTerms(description: string): boolean {
-    const text = description.toLowerCase();
-    return BLOCKED_COMMERCIAL_TERMS.some(w => text.includes(w));
+/** @deprecated Tenders are no longer blocked. Function kept as a no-op stub. */
+export function hasBlockedCommercialTerms(_description: string): boolean {
+    return false;
 }
 
 // ─── Rule 2.6: Source Confidence Score ───────────────────────────────────────
@@ -199,23 +204,33 @@ export function computeConfidenceScore(sourceUrl: string): number {
         if (TICKETING_DOMAINS.some(d => host.includes(d))) return 10;
         if (OFFICIAL_DOMAINS.some(d => host.includes(d))) return 8;
         if (host.endsWith('.org') || TRUSTED_CORPORATE.some(d => host.includes(d))) return 6;
-        if (host.endsWith('.com') || host.endsWith('.edu')) return 5;
-        return 4;
+        // Default to a passing score of 5 for all other valid domains (.net, .io, .co, etc.)
+        // Only return < 5 if the URL is completely mangled.
+        return 5;
     } catch {
         return 0;
     }
 }
 
 // ─── Rule 3: Future Date ─────────────────────────────────────────────────────
+// Uses start-of-day (midnight) as the boundary so events that occur TODAY
+// are accepted even if processed mid-day.
 
 export function isFutureDate(date: string | Date): boolean {
     const eventDate = new Date(date);
-    return !isNaN(eventDate.getTime()) && eventDate > new Date();
+    if (isNaN(eventDate.getTime())) return false;
+    // Compare against midnight of today — events happening today are still valid
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    return eventDate >= todayMidnight;
 }
 
 export function isHistoricalEvent(date: string | Date): boolean {
     const eventDate = new Date(date);
-    return !isNaN(eventDate.getTime()) && eventDate < new Date();
+    if (isNaN(eventDate.getTime())) return true; // treat unparseable as past
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    return eventDate < todayMidnight;
 }
 
 // ─── Rule 4: Normalize Date ──────────────────────────────────────────────────
@@ -412,11 +427,13 @@ export function determineIworthAlignment(title: string, description: string): { 
 export function determineOpportunityType(title: string, description: string): string {
     const text = (title + ' ' + description).toLowerCase();
 
+    // Tenders / procurement are the highest-priority opportunity type
+    if (text.includes('tender') || text.includes('procurement') || text.includes('rfp') ||
+        text.includes('request for proposal') || text.includes('bidding') || text.includes('submit proposal')) return 'Tender';
     if (text.includes('demo') || text.includes('exhibition') || text.includes('expo')) return 'Product Demo';
     if (text.includes('training') || text.includes('workshop') || text.includes('bootcamp')) return 'Training Contract';
     if (text.includes('partnership') || text.includes('channel') || text.includes('vendor')) return 'Channel Partner';
     if (text.includes('managed') || text.includes('service') || text.includes('consulting')) return 'Managed Service';
-    if (text.includes('bid') || text.includes('tender') || text.includes('procurement')) return 'Enterprise Bid';
 
     return 'Events';
 }
@@ -488,7 +505,15 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
         return { valid: false, rejectionCode: 'HTTP_ERROR', reason: reasonText };
     }
 
-    // 2.5. Speculative language check
+    // 2.5. Speculative and invalid keyword language check
+    const lowerTitle = event.title!.toLowerCase();
+    const bannedTitleWords = ["news", "launch", "announcement", "article"];
+    if (bannedTitleWords.some(w => lowerTitle.includes(w))) {
+        const reasonText = `Event restricted due to invalid keyword in title. Rejected due to: "${bannedTitleWords.find(w => lowerTitle.includes(w))}"`;
+        await logRejection({ url, title, reason: 'BLOCKED_KEYWORD', extractedJson: rawExtracted });
+        return { valid: false, rejectionCode: 'BLOCKED_KEYWORD', reason: reasonText };
+    }
+
     if (hasBannedSpeculativeWords(event.title!, event.description || '')) {
         const found = BANNED_SPECULATIVE_WORDS.find(w =>
             (event.title! + ' ' + (event.description || '')).toLowerCase().includes(w)
@@ -498,17 +523,8 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
         return { valid: false, rejectionCode: 'NOT_RELEVANT_TO_IWORTH', reason: reasonText };
     }
 
-    // 2.7. Block obvious tender / procurement descriptions
-    if (hasBlockedCommercialTerms(event.description || '')) {
-        const foundBlocked = BLOCKED_COMMERCIAL_TERMS.find(w =>
-            (event.description || '').toLowerCase().includes(w)
-        );
-        const reasonText = `Rejected — commercial procurement content detected: "${foundBlocked}"`;
-        await logRejection({ url, title, reason: 'BLOCKED_KEYWORD', extractedJson: rawExtracted });
-        return { valid: false, rejectionCode: 'BLOCKED_KEYWORD', reason: reasonText };
-    }
-
     // 2.6. Confidence score check (minimum 5/10)
+    // NOTE: Tenders from .go.ke / .ac.ke sources score 8–10 and easily pass.
     const confidenceScore = computeConfidenceScore(url);
     if (confidenceScore < 5) {
         const reasonText = `Low source confidence (${confidenceScore}/10) — not a verified domain: "${url}"`;
@@ -545,7 +561,17 @@ export async function validateEvent(event: RawEventInput, rawExtracted?: any): P
 
     // 7. Enrichment (Tags & Score)
     const description = event.description ?? '';
-    const tags = extractTags(description, event.tags || []);
+    // Auto-add #Tender tag for procurement opportunities
+    const tenderText = (event.title! + ' ' + description).toLowerCase();
+    const baseTags = event.tags || [];
+    if (
+        (tenderText.includes('tender') || tenderText.includes('procurement') ||
+         tenderText.includes('rfp') || tenderText.includes('bidding')) &&
+        !baseTags.map(t => t.toLowerCase()).includes('tender')
+    ) {
+        baseTags.push('Tender');
+    }
+    const tags = extractTags(description, baseTags);
     const priorityScore = typeof event.priorityScore === 'number' ? event.priorityScore : autoScore(event);
     const confidence = computeConfidenceScore(url);
     const relevanceScore = scoreRelevance(event.title!, description, event.category);

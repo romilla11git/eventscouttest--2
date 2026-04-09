@@ -74,17 +74,18 @@ Return a JSON array (empty [] only if the page has zero event-related informatio
 [
   {
     "title": "string",
+    "description": "string or null",
     "date": "ISO-8601 string or null",
     "location": "string or null",
-    "description": "string or null",
-    "sourceUrl": "string",
-    "relevanceScore": 0.8,
-    "confidence": 0.7
+    "tags": ["tag1", "tag2"],
+    "priorityScore": 5,
+    "whyItMattersForIworth": "string",
+    "recommendedAction": "string",
+    "sourceUrl": "string"
   }
 ]
 
-relevanceScore (0-1): 0.9-1.0 = ICT/EdTech/AI/training, 0.6-0.8 = business/innovation, 0.3-0.5 = weak but acceptable.
-confidence (0-1): how confident you are in the data quality.
+priorityScore (1-10): evaluate relevance to iWorth and revenue potential.
 
 Return ONLY the JSON array. No markdown, no explanations outside the array.
 
@@ -122,18 +123,19 @@ Return a JSON object with an "events" array:
   "events": [
     {
       "title": "string",
+      "description": "string or null",
       "date": "ISO-8601 string or null",
       "location": "string or null",
-      "description": "string or null",
-      "sourceUrl": "string",
-      "relevanceScore": 0.8,
-      "confidence": 0.7
+      "tags": ["tag1", "tag2"],
+      "priorityScore": 5,
+      "whyItMattersForIworth": "string",
+      "recommendedAction": "string",
+      "sourceUrl": "string"
     }
   ]
 }
 
-relevanceScore (0-1): 0.9-1.0 = ICT/EdTech/AI/training, 0.6-0.8 = business/innovation, 0.3-0.5 = weak but acceptable.
-confidence (0-1): how confident you are in the data quality.
+priorityScore (1-10): evaluate relevance to iWorth and revenue potential.
 
 Return ONLY the JSON object. No markdown, no commentary outside the JSON.`;
 
@@ -290,16 +292,23 @@ export async function POST(req: Request) {
           }
 
           const rawDate = parsed.date ?? undefined;
-          // Fix year-only fallback dates that are now in the past (e.g. 2026-01-01)
-          let resolvedDate: string | undefined = rawDate;
-          if (rawDate) {
-            const d = new Date(rawDate);
-            if (!isNaN(d.getTime()) && d < new Date()) {
-              // Bump to 90 days from today
-              resolvedDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-              console.log(`[EventScout Pipeline] Date "${rawDate}" is past — bumped to 90 days from now`);
-            }
+          if (!rawDate) {
+            errors.push({ url, reason: `Event "${parsed.title}" has no date — rejected` });
+            continue;
           }
+          const parsedDateObj = new Date(rawDate);
+          if (isNaN(parsedDateObj.getTime())) {
+            errors.push({ url, reason: `Event "${parsed.title}" has unparseable date "${rawDate}" — rejected` });
+            continue;
+          }
+          const todayMidnight = new Date();
+          todayMidnight.setHours(0, 0, 0, 0);
+          if (parsedDateObj < todayMidnight) {
+            errors.push({ url, reason: `Event "${parsed.title}" date ${rawDate} is in the past — rejected` });
+            console.log(`[EventScout Pipeline] REJECTED past date: ${parsed.title} (${rawDate})`);
+            continue;
+          }
+          const resolvedDate: string = parsedDateObj.toISOString();
 
           const candidate: RawEventInput = {
             title: parsed.title,
@@ -310,11 +319,12 @@ export async function POST(req: Request) {
             category: undefined,
             organizer: undefined,
             sourceUrl: parsed.sourceUrl || url,
-            suggestedAction: 'Attend event',
+            suggestedAction: parsed.recommendedAction || 'Attend event',
             opportunityType: 'Events',
             iworthVertical: undefined,
-            whyItMattersForIworth: undefined,
-            tags: [],
+            whyItMattersForIworth: parsed.whyItMattersForIworth || undefined,
+            tags: parsed.tags || [],
+            priorityScore: parsed.priorityScore || 5,
             rawSource: new URL(url).hostname,
           };
 
@@ -326,16 +336,17 @@ export async function POST(req: Request) {
           }
 
           const relevance = scoreRelevance(candidate.title, candidate.description ?? '', candidate.category);
-          if (relevance < 45) {
+          if (relevance < 40) {
             console.log('[EventScout Pipeline] REJECTED: low iWorth relevance', candidate.title, relevance);
             errors.push({ url, reason: `Low iWorth relevance (${relevance})` });
             continue;
           }
 
-          // Attach vertical + business-alignment narrative for iWorth tech
+          // Attach vertical + business-alignment narrative for iWorth tech if not provided by LLM
           const { iworthVertical, whyItMattersForIworth } = determineIworthAlignment(candidate.title, candidate.description ?? '');
-          candidate.iworthVertical = iworthVertical;
-          candidate.whyItMattersForIworth = whyItMattersForIworth;
+          if (!candidate.iworthVertical) candidate.iworthVertical = iworthVertical;
+          if (!candidate.whyItMattersForIworth) candidate.whyItMattersForIworth = whyItMattersForIworth;
+          
           candidate.opportunityType = determineOpportunityType(candidate.title, candidate.description ?? '');
 
           const outcome = await validateAndSaveEvent(candidate, systemUser.id, parsed);
