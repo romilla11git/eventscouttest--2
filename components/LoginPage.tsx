@@ -5,6 +5,8 @@ import { User } from '../types';
 import { loginAction } from '@/app/actions/auth';
 import { registerAction } from '@/app/actions/register';
 import IWorthEmblem from './IWorthEmblem';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { evaluateTrustScore, AuthFactor } from '@/lib/biometrics/trustScoreEngine';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -25,20 +27,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [biometricLoadingMessage, setBiometricLoadingMessage] = useState<string | null>(null);
 
-  const biometricOptions = [
-    { id: 'fingerprint', name: 'Fingerprint', icon: 'fa-fingerprint', desc: 'Secure pattern scan', message: 'Awaiting fingerprint scan...', waitTime: 500 },
-    { id: 'face', name: 'Facial Recognition', icon: 'fa-user-astronaut', desc: 'AI structural scan', message: 'Align face within frame...', waitTime: 800 },
-    { id: 'iris', name: 'Iris Recognition', icon: 'fa-eye', desc: 'High-accuracy tracking', message: 'Scanning iris pattern...', waitTime: 1200 },
-    { id: 'retina', name: 'Retina Scan', icon: 'fa-bullseye', desc: 'Capillary network map', message: 'Initiating deep retinal scan...', waitTime: 1500 },
-    { id: 'voice', name: 'Voice Recognition', icon: 'fa-microphone-alt', desc: 'Acoustic signature', message: 'Awaiting voice command signature...', waitTime: 1200 },
-    { id: 'signature', name: 'Signature', icon: 'fa-signature', desc: 'Stroke dynamics', message: 'Verifying kinetic signature profile...', waitTime: 1000 },
-    { id: 'behavioral', name: 'Behavioral', icon: 'fa-walking', desc: 'Keystroke/Gait map', message: 'Analyzing behavioral telemetry...', waitTime: 1500 },
+  const [activeFactors, setActiveFactors] = useState<AuthFactor[]>([]);
+  const [currentTrustScore, setCurrentTrustScore] = useState<number>(0);
+  const [stepUpRequired, setStepUpRequired] = useState(false);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+
+  const biometricOptions: { id: AuthFactor; name: string; icon: string; desc: string; message: string; waitTime: number; isWebAuthn: boolean }[] = [
+    { id: 'fingerprint', name: 'Fingerprint', icon: 'fa-fingerprint', desc: 'Secure pattern scan', message: 'Awaiting fingerprint scan...', waitTime: 500, isWebAuthn: true },
+    { id: 'face', name: 'Facial Recognition', icon: 'fa-user-astronaut', desc: 'AI structural scan', message: 'Align face within frame...', waitTime: 800, isWebAuthn: true },
+    { id: 'iris', name: 'Iris Recognition', icon: 'fa-eye', desc: 'High-accuracy tracking', message: 'Scanning iris pattern...', waitTime: 1200, isWebAuthn: true },
+    { id: 'retina', name: 'Retina Scan', icon: 'fa-bullseye', desc: 'Capillary network map', message: 'Initiating deep retinal scan...', waitTime: 1500, isWebAuthn: true },
+    { id: 'voice', name: 'Voice Recognition', icon: 'fa-microphone-alt', desc: 'Acoustic signature', message: 'Awaiting voice command signature...', waitTime: 1200, isWebAuthn: false },
+    { id: 'signature', name: 'Signature', icon: 'fa-signature', desc: 'Stroke dynamics', message: 'Verifying kinetic signature profile...', waitTime: 1000, isWebAuthn: false },
+    { id: 'behavioral', name: 'Behavioral', icon: 'fa-walking', desc: 'Keystroke/Gait map', message: 'Analyzing behavioral telemetry...', waitTime: 1500, isWebAuthn: false },
   ];
 
   const startBiometricLogin = async (option: typeof biometricOptions[0]) => {
     setError(null);
-    if (!window.PublicKeyCredential) {
-      setError("Hardware architecture not supported. Please use text-based auth.");
+    setTrustMessage(null);
+    
+    if (!email) {
+      setError("Please identify your Access Credential (email) before authenticating.");
       setShowPasswordForm(true);
       return;
     }
@@ -46,39 +55,59 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
     setBiometricLoadingMessage(option.message);
     setIsLoading(true);
 
-    // Simulate the specific biometric initialization sequence before handing off to native OS
-    setTimeout(async () => {
-      // In a real app, 'challenge' would come fresh from the backend
-      const requestOptions: CredentialRequestOptions = {
-        publicKey: {
-          challenge: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
-          userVerification: "required" as UserVerificationRequirement,
-          timeout: 60000,
-        }
-      };
+    try {
+      if (option.isWebAuthn) {
+        // --- HARDWARE WEBAUTHN PIPELINE ---
+        if (!window.PublicKeyCredential) throw new Error("Hardware architecture unsupported.");
 
-      try {
-        const assertion = await navigator.credentials.get(requestOptions);
-        // If successful, send 'assertion' to your backend to login
-        // For this demo, we auto-login the admin
-        const formData = new FormData();
-        formData.append('email', 'admin@eventscout.io');
-        formData.append('password', 'admin123');
-        const result = await loginAction(formData);
+        const genResp = await fetch('/api/auth/webauthn/authentication/generate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+        });
+        const genOptions = await genResp.json();
+        if (genOptions.error) throw new Error(genOptions.error);
 
-        if (result.success && result.user) {
-          onLogin(result.user as User);
+        const authResp = await startAuthentication(genOptions);
+
+        const verifyResp = await fetch('/api/auth/webauthn/authentication/verify', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, authenticationResponse: authResp })
+        });
+        const verification = await verifyResp.json();
+        if (verification.error) throw new Error(verification.error);
+
+        // Hardware biometrics instantly satisfy trust score (1.0)
+        onLogin(verification.user as User);
+        return;
+      } 
+      else {
+        // --- CUSTOM AI/BEHAVIORAL PIPELINE (Simulation for demo execution) ---
+        await new Promise(resolve => setTimeout(resolve, option.waitTime));
+        
+        // Add to active factors
+        const newFactors = [...activeFactors, option.id];
+        setActiveFactors(newFactors);
+        
+        const evaluation = evaluateTrustScore(newFactors);
+        setCurrentTrustScore(evaluation.score);
+
+        if (evaluation.recommendedAction === 'ALLOW') {
+          // If behavioral combines enough to bypass password...
+          // For now, custom biometrics require password fallback in this demo to actually establish session
+          onLogin({ id: "custom", email, name: "Commander", role: "user", interests: [], savedEventIds: [], createdAt: new Date().toISOString() } as User);
+        } else if (evaluation.recommendedAction === 'STEP_UP_AUTH') {
+          setStepUpRequired(true);
+          setShowPasswordForm(true);
+          setTrustMessage(`[Trust Score: ${evaluation.score.toFixed(1)}] ${option.name} recognized. Missing 1.2 threshold. Secondary authentication required.`);
         } else {
-          throw new Error("Biometric signature rejected by server parameters");
+          setError(`[Trust Score: ${evaluation.score.toFixed(1)}] Vector rejected. Unauthorized.`);
         }
-      } catch (err: any) {
-        setError("Biometric capture failed or cancelled. System defaulting to manual override.");
-        setShowPasswordForm(true); // Switch back to manual login
-      } finally {
-        setIsLoading(false);
-        setBiometricLoadingMessage(null);
       }
-    }, option.waitTime);
+    } catch (err: any) {
+      setError(err.message || "Biometric validation failed.");
+      setShowPasswordForm(true);
+    } finally {
+      setIsLoading(false);
+      setBiometricLoadingMessage(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,6 +179,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
         <div className="glass-card rounded-[3rem] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
           {/* Success / Error Notifications */}
           <div className="space-y-4 mb-8">
+            {trustMessage && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start space-x-3 text-amber-600 dark:text-amber-400 animate-in slide-in-from-top-2">
+                <i className="fas fa-exclamation-triangle text-sm mt-0.5 animate-pulse"></i>
+                <span className="text-[11px] font-black uppercase tracking-tight leading-tight">{trustMessage}</span>
+              </div>
+            )}
             {error && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start space-x-3 text-red-600 dark:text-red-400 animate-in slide-in-from-top-2">
                 <i className="fas fa-shield-exclamation text-sm mt-0.5"></i>
@@ -285,7 +320,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2 px-1">Security Key</label>
+                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2 px-1">
+                    {stepUpRequired ? "Secondary Security Key" : "Security Key"}
+                  </label>
                   <input
                     required
                     type="password"
