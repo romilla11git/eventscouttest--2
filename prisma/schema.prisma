@@ -48,47 +48,10 @@ model User {
   isVisible      Boolean   @default(true)
   interests      String[]  @default([])
   savedEventIds  String[]  @default([])
-  currentChallenge String? 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   managedEvents  Event[]   @relation("Manager")
   createdEvents  Event[]   @relation("Creator")
-  
-  credentials    Credential[]    @relation("UserCredentials")
-  behavioralData BehavioralData? @relation("UserBehavior")
-}
-
-model Credential {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation("UserCredentials", fields: [userId], references: [id], onDelete: Cascade)
-  
-  name            String?
-  publicKey       Bytes
-  credentialID    Bytes    @unique
-  counter         BigInt
-  deviceType      String
-  backedUp        Boolean
-  transports      String[]
-  
-  createdAt       DateTime @default(now())
-  lastUsedAt      DateTime @default(now())
-}
-
-model BehavioralData {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation("UserBehavior", fields: [userId], references: [id], onDelete: Cascade)
-  
-  typingPattern   Json?
-  mousePattern    Json?
-  
-  voiceMatrix     Json?    
-  signatureMatrix Json?    
-  
-  baselineScore   Float    @default(0.0)
-  
-  lastUpdated     DateTime @updatedAt
 }
 
 model Event {

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { startRegistration } from '@simplewebauthn/browser';
 
 interface UserProfileProps {
   user: User | null;
@@ -43,33 +42,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdate, onReset, addN
     } else {
       setIsConfirmingReset(true);
       setTimeout(() => setIsConfirmingReset(false), 3000);
-    }
-  };
-
-  const enrollPasskey = async () => {
-    try {
-      if (!window.PublicKeyCredential) throw new Error("Hardware biometrics unsupported on this device.");
-
-      const genResp = await fetch('/api/auth/webauthn/registration/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email })
-      });
-      const genOptions = await genResp.json();
-      if (genOptions.error) throw new Error(genOptions.error);
-
-      const regResp = await startRegistration(genOptions);
-
-      const verifyResp = await fetch('/api/auth/webauthn/registration/verify', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, registrationResponse: regResp })
-      });
-      const verification = await verifyResp.json();
-
-      if (verification.verified) {
-        addNotification("Hardware biometric enrolled successfully!", "success");
-      } else {
-        throw new Error(verification.error || "Enrollment failed.");
-      }
-    } catch (err: any) {
-      addNotification(err.message || "Failed to register biometric factor.", "error");
     }
   };
 
@@ -168,18 +140,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdate, onReset, addN
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${user.isVisible ? 'right-1' : 'left-1'}`} />
                     </button>
                   </div>
-                  
-                  <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
-                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">Hardware Keys</p>
-                    <button
-                      onClick={enrollPasskey}
-                      className="w-full py-4 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all border shadow-md bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-800/20 flex items-center justify-center gap-3"
-                    >
-                      <i className="fas fa-fingerprint"></i>
-                      Enroll Device Biometric
-                    </button>
-                  </div>
-
                   <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
                     <button
                       onClick={handleResetClick}

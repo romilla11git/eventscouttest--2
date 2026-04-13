@@ -5,8 +5,6 @@ import { User } from '../types';
 import { loginAction } from '@/app/actions/auth';
 import { registerAction } from '@/app/actions/register';
 import IWorthEmblem from './IWorthEmblem';
-import { startAuthentication } from '@simplewebauthn/browser';
-import { evaluateTrustScore, AuthFactor } from '@/lib/biometrics/trustScoreEngine';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -25,88 +23,44 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [biometricLoadingMessage, setBiometricLoadingMessage] = useState<string | null>(null);
 
-  const [activeFactors, setActiveFactors] = useState<AuthFactor[]>([]);
-  const [currentTrustScore, setCurrentTrustScore] = useState<number>(0);
-  const [stepUpRequired, setStepUpRequired] = useState(false);
-  const [trustMessage, setTrustMessage] = useState<string | null>(null);
-
-  const biometricOptions: { id: AuthFactor; name: string; icon: string; desc: string; message: string; waitTime: number; isWebAuthn: boolean }[] = [
-    { id: 'fingerprint', name: 'Fingerprint', icon: 'fa-fingerprint', desc: 'Secure pattern scan', message: 'Awaiting fingerprint scan...', waitTime: 500, isWebAuthn: true },
-    { id: 'face', name: 'Facial Recognition', icon: 'fa-user-astronaut', desc: 'AI structural scan', message: 'Align face within frame...', waitTime: 800, isWebAuthn: true },
-    { id: 'iris', name: 'Iris Recognition', icon: 'fa-eye', desc: 'High-accuracy tracking', message: 'Scanning iris pattern...', waitTime: 1200, isWebAuthn: true },
-    { id: 'retina', name: 'Retina Scan', icon: 'fa-bullseye', desc: 'Capillary network map', message: 'Initiating deep retinal scan...', waitTime: 1500, isWebAuthn: true },
-    { id: 'voice', name: 'Voice Recognition', icon: 'fa-microphone-alt', desc: 'Acoustic signature', message: 'Awaiting voice command signature...', waitTime: 1200, isWebAuthn: false },
-    { id: 'signature', name: 'Signature', icon: 'fa-signature', desc: 'Stroke dynamics', message: 'Verifying kinetic signature profile...', waitTime: 1000, isWebAuthn: false },
-    { id: 'behavioral', name: 'Behavioral', icon: 'fa-walking', desc: 'Keystroke/Gait map', message: 'Analyzing behavioral telemetry...', waitTime: 1500, isWebAuthn: false },
-  ];
-
-  const startBiometricLogin = async (option: typeof biometricOptions[0]) => {
+  const startBiometricLogin = async () => {
     setError(null);
-    setTrustMessage(null);
-    
-    if (!email) {
-      setError("Please identify your Access Credential (email) before authenticating.");
+    if (!window.PublicKeyCredential) {
+      setError("Biometrics not supported on this device. Using manual login.");
       setShowPasswordForm(true);
       return;
     }
 
-    setBiometricLoadingMessage(option.message);
-    setIsLoading(true);
+    // In a real app, 'challenge' would come fresh from the backend
+    const options: CredentialRequestOptions = {
+      publicKey: {
+        challenge: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+        userVerification: "required" as UserVerificationRequirement,
+        timeout: 60000,
+      }
+    };
 
     try {
-      if (option.isWebAuthn) {
-        // --- HARDWARE WEBAUTHN PIPELINE ---
-        if (!window.PublicKeyCredential) throw new Error("Hardware architecture unsupported.");
+      setIsLoading(true);
+      const assertion = await navigator.credentials.get(options);
+      // If successful, send 'assertion' to your backend to login
+      // For this demo, we auto-login the admin
+      const formData = new FormData();
+      formData.append('email', 'admin@eventscout.io');
+      formData.append('password', 'admin123');
+      const result = await loginAction(formData);
 
-        const genResp = await fetch('/api/auth/webauthn/authentication/generate', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
-        });
-        const genOptions = await genResp.json();
-        if (genOptions.error) throw new Error(genOptions.error);
-
-        const authResp = await startAuthentication(genOptions);
-
-        const verifyResp = await fetch('/api/auth/webauthn/authentication/verify', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, authenticationResponse: authResp })
-        });
-        const verification = await verifyResp.json();
-        if (verification.error) throw new Error(verification.error);
-
-        // Hardware biometrics instantly satisfy trust score (1.0)
-        onLogin(verification.user as User);
-        return;
-      } 
-      else {
-        // --- CUSTOM AI/BEHAVIORAL PIPELINE (Simulation for demo execution) ---
-        await new Promise(resolve => setTimeout(resolve, option.waitTime));
-        
-        // Add to active factors
-        const newFactors = [...activeFactors, option.id];
-        setActiveFactors(newFactors);
-        
-        const evaluation = evaluateTrustScore(newFactors);
-        setCurrentTrustScore(evaluation.score);
-
-        if (evaluation.recommendedAction === 'ALLOW') {
-          // If behavioral combines enough to bypass password...
-          // For now, custom biometrics require password fallback in this demo to actually establish session
-          onLogin({ id: "custom", email, name: "Commander", role: "user", interests: [], savedEventIds: [], createdAt: new Date().toISOString() } as User);
-        } else if (evaluation.recommendedAction === 'STEP_UP_AUTH') {
-          setStepUpRequired(true);
-          setShowPasswordForm(true);
-          setTrustMessage(`[Trust Score: ${evaluation.score.toFixed(1)}] ${option.name} recognized. Missing 1.2 threshold. Secondary authentication required.`);
-        } else {
-          setError(`[Trust Score: ${evaluation.score.toFixed(1)}] Vector rejected. Unauthorized.`);
-        }
+      if (result.success && result.user) {
+        onLogin(result.user as User);
+      } else {
+        throw new Error("Biometric authentication rejected by server");
       }
     } catch (err: any) {
-      setError(err.message || "Biometric validation failed.");
-      setShowPasswordForm(true);
+      setError("Biometric failed or cancelled. Please use your password.");
+      setShowPasswordForm(true); // Switch back to manual login
     } finally {
       setIsLoading(false);
-      setBiometricLoadingMessage(null);
     }
   };
 
@@ -179,12 +133,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
         <div className="glass-card rounded-[3rem] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
           {/* Success / Error Notifications */}
           <div className="space-y-4 mb-8">
-            {trustMessage && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start space-x-3 text-amber-600 dark:text-amber-400 animate-in slide-in-from-top-2">
-                <i className="fas fa-exclamation-triangle text-sm mt-0.5 animate-pulse"></i>
-                <span className="text-[11px] font-black uppercase tracking-tight leading-tight">{trustMessage}</span>
-              </div>
-            )}
             {error && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start space-x-3 text-red-600 dark:text-red-400 animate-in slide-in-from-top-2">
                 <i className="fas fa-shield-exclamation text-sm mt-0.5"></i>
@@ -239,60 +187,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
             )}
 
             {!showPasswordForm && !isRegisterMode ? (
-              <div className="space-y-6">
-                
-                {isLoading ? (
-                  <div className="w-full py-12 rounded-2xl glass-card flex flex-col items-center justify-center border border-cyan-500/30">
-                    <div className="relative mb-6">
-                      <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <i className={`fas ${biometricOptions.find(o => o.message === biometricLoadingMessage)?.icon || 'fa-fingerprint'} text-cyan-400 text-xl animate-pulse`}></i>
-                      </div>
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-widest text-cyan-500 animate-pulse">{biometricLoadingMessage}</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-2">Connecting to device hardware...</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="mb-4 flex items-center gap-2">
-                       <i className="fas fa-shield-alt text-cyan-500"></i>
-                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-400">Select Biometric Vector</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {biometricOptions.slice(0, 6).map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => startBiometricLogin(option)}
-                          className="group relative overflow-hidden bg-white dark:bg-card-solid border border-gray-200 dark:border-white/10 p-3 rounded-xl flex flex-col items-start text-left hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                          <i className={`fas ${option.icon} text-gray-400 group-hover:text-cyan-500 text-lg mb-2 transition-colors`}></i>
-                          <span className="text-[10px] font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-1 line-clamp-1">{option.name}</span>
-                          <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest line-clamp-1">{option.desc}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {/* The 7th Behavioral option spans full width */}
-                    <button
-                      type="button"
-                      onClick={() => startBiometricLogin(biometricOptions[6])}
-                      className="w-full group relative overflow-hidden bg-gradient-to-r from-gray-50 to-white dark:from-white/5 dark:to-transparent border border-gray-200 dark:border-white/10 p-4 rounded-xl flex items-center justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                          <i className={`fas ${biometricOptions[6].icon}`}></i>
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">{biometricOptions[6].name}</span>
-                          <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Continuous Analysis / Gait & Keystroke</span>
-                        </div>
-                      </div>
-                      <i className="fas fa-chevron-right text-gray-300 dark:text-white/20 group-hover:text-indigo-400"></i>
-                    </button>
-                  </div>
-                )}
-
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={startBiometricLogin}
+                  disabled={isLoading}
+                  className="w-full py-5 iw-btn-primary rounded-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <i className="fas fa-fingerprint mr-4 text-sm"></i>
+                      🔓 Sign in with Biometrics
+                    </>
+                  )}
+                </button>
                 <div className="text-center pt-2">
                   <button
                     type="button"
@@ -302,7 +212,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
                     }}
                     className="text-[10px] font-black text-gray-400 dark:text-gray-500 hover:text-cyan-500 transition-colors uppercase tracking-[0.2em] border-b border-gray-200 dark:border-gray-800 pb-1"
                   >
-                    Or use manual password
+                    Or use password
                   </button>
                 </div>
               </div>
@@ -320,9 +230,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, isDarkMode, onToggleThem
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2 px-1">
-                    {stepUpRequired ? "Secondary Security Key" : "Security Key"}
-                  </label>
+                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2 px-1">Security Key</label>
                   <input
                     required
                     type="password"
